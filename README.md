@@ -1,16 +1,18 @@
 # Cortex Control on Linux
 
 Runs **Cortex Control** (Neural DSP, Windows only) under Wine and connects it to the
-**Quad Cortex mini** over USB: device detection, preset editing, full user interface.
+**Quad Cortex** and **Quad Cortex mini** over USB: device detection, preset editing, full user
+interface.
 
-Tested on CachyOS (KDE Plasma, Wayland) with Wine 11.20, DXVK 3.1.1 and Cortex Control 4.1.0.
+Tested with a Quad Cortex mini on CachyOS (KDE Plasma, Wayland) with Wine 11.20, DXVK 3.1.1 and
+Cortex Control 4.1.0.
 
 > Independent project, not affiliated with Neural DSP. Cortex Control is not included: download
 > the Windows installer from the Neural DSP website.
 
 ## How it works
 
-The Quad Cortex mini (USB `152a:892f`) exposes three interfaces: audio (UAC2), MIDI and a
+The Quad Cortex (USB `152a:880a`) and Quad Cortex mini (`152a:892f`) expose three interfaces: audio (UAC2), MIDI and a
 proprietary HID channel (input report 1, output report 2, 128 bytes each). Linux handles audio and
 MIDI natively. Cortex Control drives the device through the HID channel, which Wine forwards to the
 Windows application through its `hidraw` backend. The Neural DSP (Thesycon) Windows USB driver is
@@ -55,7 +57,7 @@ cd cortex-control-linux
    sudo udevadm trigger --subsystem-match=hidraw --subsystem-match=usb
    ```
 
-   Then unplug and replug the Quad Cortex mini.
+   Then unplug and replug the Quad Cortex.
 
 2. Install Cortex Control in a dedicated Wine prefix
    (`~/.local/share/wineprefixes/cortex-control`, override with the `CORTEX_PREFIX` variable):
@@ -100,9 +102,9 @@ The Wine log is written to `~/.local/state/cortex-control.log`.
 
 ## Known limitations
 
-- Only the **Quad Cortex mini** (`152a:892f`) is covered. The full-size Quad Cortex should work the
-  same way, but its USB ID is not in the udev rule yet: `lsusb | grep -i cortex` gives the ID to
-  add. Contributions welcome.
+- Only the **Quad Cortex mini** has been tested. The full-size Quad Cortex (`152a:880a`) exposes
+  the same HID channel and is covered by the udev rule and the script, but nobody has confirmed it
+  works yet: feedback welcome.
 - Not verified yet: firmware updates under Wine. To be safe, update from Windows or macOS: a USB
   disconnection during the write could leave the device in a bad state.
 - Not verified either: signing in to the Neural DSP account and Cortex Cloud sync.

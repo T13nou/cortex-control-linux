@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Cortex Control (Neural DSP) under Wine for the Quad Cortex mini.
+# Cortex Control (Neural DSP) under Wine for the Quad Cortex and Quad Cortex mini.
 # Usage: cortex-control {doctor|install <installer.exe>|run|stop|dxvk|desktop|uninstall}
 set -euo pipefail
 
 VID=152a
-PID=892f
+PIDS="880a 892f"  # Quad Cortex, Quad Cortex mini
 PREFIX="${CORTEX_PREFIX:-${XDG_DATA_HOME:-$HOME/.local/share}/wineprefixes/cortex-control}"
 LOG="${XDG_STATE_HOME:-$HOME/.local/state}/cortex-control.log"
 SELF="$(readlink -f "$0")"
@@ -19,14 +19,16 @@ ok()   { printf '  \e[32mOK\e[0m  %s\n' "$*"; }
 warn() { printf '  \e[33m!!\e[0m  %s\n' "$*"; }
 die()  { printf '\e[31mError:\e[0m %s\n' "$*" >&2; exit 1; }
 
-# /dev/hidrawN node of the Quad Cortex mini, empty if it is not plugged in.
+# /dev/hidrawN node of the Quad Cortex, empty if it is not plugged in.
 qc_hidraw() {
-    local h
+    local h pid
     for h in /sys/class/hidraw/hidraw*; do
-        if grep -qi "HID_ID=0003:0000${VID}:0000${PID}" "$h/device/uevent" 2>/dev/null; then
-            echo "/dev/$(basename "$h")"
-            return
-        fi
+        for pid in $PIDS; do
+            if grep -qi "HID_ID=0003:0000${VID}:0000${pid}" "$h/device/uevent" 2>/dev/null; then
+                echo "/dev/$(basename "$h")"
+                return
+            fi
+        done
     done
 }
 
@@ -53,7 +55,7 @@ cmd_doctor() {
 
     node="$(qc_hidraw)"
     if [[ -z "$node" ]]; then
-        warn "Quad Cortex mini not detected: plug it in over USB and power it on"; bad=1
+        warn "Quad Cortex not detected: plug it in over USB and power it on"; bad=1
     elif [[ -r "$node" && -w "$node" ]]; then
         ok "HID channel accessible ($node)"
     else
@@ -98,7 +100,7 @@ cmd_run() {
     [[ -n "$exe" ]] || die "Cortex Control is not installed: $0 install <installer.exe>"
     node="$(qc_hidraw)"
     if [[ -z "$node" ]]; then
-        warn "Quad Cortex mini not detected: plug it in before launching, otherwise Cortex Control will not see it."
+        warn "Quad Cortex not detected: plug it in before launching, otherwise Cortex Control will not see it."
     elif [[ ! -r "$node" || ! -w "$node" ]]; then
         warn "$node is not accessible: Cortex Control will not be able to talk to the Quad Cortex (udev rule missing)."
     fi
