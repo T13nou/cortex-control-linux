@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+# Cortex Control (Neural DSP) sous Wine pour le Quad Cortex mini.
+# Usage : cortex-control {doctor|install <installeur.exe>|run|stop|dxvk|desktop|uninstall}
+set -euo pipefail
+
+VID=152a
+PID=892f
+PREFIX="${CORTEX_PREFIX:-${XDG_DATA_HOME:-$HOME/.local/share}/wineprefixes/cortex-control}"
+LOG="${XDG_STATE_HOME:-$HOME/.local/state}/cortex-control.log"
+SELF="$(readlink -f "$0")"
+
+export WINEPREFIX="$PREFIX"
+export WINEARCH=win64
+# Pas d'associations de fichiers ni de raccourcis Wine : on crée le nôtre (commande desktop).
+export WINEDLLOVERRIDES="winemenubuilder.exe=d${WINEDLLOVERRIDES:+;$WINEDLLOVERRIDES}"
+export WINEDEBUG="${WINEDEBUG:--all}"
+
+ok()   { printf '  \e[32mOK\e[0m  %s\n' "$*"; }
+warn() { printf '  \e[33m!!\e[0m  %s\n' "$*"; }
+die()  { printf '\e[31mErreur :\e[0m %s\n' "$*" >&2; exit 1; }
+
+# Nœud /dev/hidrawN du Quad Cortex mini, vide s'il n'est pas branché.
+qc_hidraw() {
+    local h
+    for h in /sys/class/hidraw/hidraw*; do
+        if grep -qi "HID_ID=0003:0000${VID}:0000${PID}" "$h/device/uevent" 2>/dev/null; then
+            echo "/dev/$(basename "$h")"
+            return
+        fi
+    done
+}
+
+# Cortex Control (JUCE 8) dessine en Direct2D ; avec le d3d11 de Wine la fenêtre reste noire.
+has_dxvk() {
+    grep -qa dxvk "$PREFIX/drive_c/windows/system32/d3d11.dll" 2>/dev/null
+}
+
+install_dxvk() {
+    command -v winetricks >/dev/null || die "winetricks absent : sudo pacman -S winetricks"
+    mkdir -p "$(dirname "$LOG")"
+    echo "Installation de DXVK dans le préfixe…"
+    winetricks -q dxvk >>"$LOG" 2>&1 || die "échec de winetricks dxvk. Journal : $LOG"
+}
+
+app_exe() {
+    find "$PREFIX/drive_c" -iname 'Cortex Control.exe' -print -quit 2>/dev/null
+}
+
+cmd_doctor() {
+    local bad=0 node
+    echo "Vérifications :"
+    if command -v wine >/dev/null; then ok "Wine $(wine --version)"; else warn "Wine absent : sudo pacman -S wine-cachyos"; bad=1; fi
+
+    node="$(qc_hidraw)"
+    if [[ -z "$node" ]]; then
+        warn "Quad Cortex mini non détecté : branche-le en USB et allume-le"; bad=1
+    elif [[ -r "$node" && -w "$node" ]]; then
+        ok "Canal HID accessible ($node)"
+    else
+        warn "$node n'est pas accessible en lecture/écriture : installe la règle udev (voir README)"; bad=1
+    fi
+
+    if grep -qi 'Quad Cortex' /proc/asound/cards 2>/dev/null; then ok "Carte son ALSA présente"; else warn "Pas de carte son Quad Cortex dans ALSA"; fi
+
+    if [[ -d "$PREFIX/drive_c" ]]; then ok "Préfixe Wine : $PREFIX"; else warn "Préfixe absent : lance « $0 install <installeur.exe> »"; bad=1; fi
+    if has_dxvk; then ok "DXVK installé"; else warn "DXVK absent (fenêtre noire) : $0 dxvk"; bad=1; fi
+    if [[ -n "$(app_exe)" ]]; then ok "Cortex Control installé : $(app_exe)"; else warn "Cortex Control pas encore installé"; bad=1; fi
+    return $bad
+}
+
+cmd_install() {
+    local exe="${1:-}"
+    [[ -f "$exe" ]] || die "indique le chemin de l'installeur, par ex. : $0 install ~/Téléchargements/'Cortex Control v4.1.0.exe'"
+    command -v wine >/dev/null || die "Wine absent : sudo pacman -S wine-cachyos"
+
+    mkdir -p "$(dirname "$PREFIX")" "$(dirname "$LOG")"
+    if [[ ! -d "$PREFIX/drive_c" ]]; then
+        echo "Création du préfixe $PREFIX…"
+        wineboot -i >>"$LOG" 2>&1
+        wine winecfg -v win10 >>"$LOG" 2>&1
+        wineserver -w
+    fi
+    has_dxvk || install_dxvk
+
+    echo "Lancement de l'installeur (accepte les options par défaut)…"
+    echo "Si l'installeur propose un pilote USB Neural DSP/Thesycon, décoche-le ou ignore son échec : il ne sert pas sous Wine."
+    wine "$exe" >>"$LOG" 2>&1 || warn "l'installeur a rendu un code d'erreur (souvent le pilote USB) ; vérification…"
+    wineserver -w
+
+    [[ -n "$(app_exe)" ]] || die "Cortex Control.exe introuvable dans le préfixe. Journal : $LOG"
+    ok "Installé : $(app_exe)"
+    cmd_desktop
+}
+
+cmd_run() {
+    local exe node
+    exe="$(app_exe)"
+    [[ -n "$exe" ]] || die "Cortex Control n'est pas installé : $0 install <installeur.exe>"
+    node="$(qc_hidraw)"
+    if [[ -z "$node" ]]; then
+        warn "Quad Cortex mini non détecté : branche-le avant de lancer, sinon Cortex Control ne le verra pas."
+    elif [[ ! -r "$node" || ! -w "$node" ]]; then
+        warn "$node inaccessible : Cortex Control ne pourra pas parler au Quad Cortex (règle udev manquante)."
+    fi
+    mkdir -p "$(dirname "$LOG")"
+    cd "$(dirname "$exe")"
+    exec wine "$exe" "$@" >>"$LOG" 2>&1
+}
+
+ICON_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/256x256/apps"
+
+# Extrait la plus grande icône de l'exécutable vers le thème d'icônes de l'utilisateur.
+extract_icon() {
+    local exe tmp src
+    exe="$(app_exe)"
+    [[ -n "$exe" ]] && command -v 7z >/dev/null && command -v magick >/dev/null || return 1
+    tmp="$(mktemp -d)"
+    7z x -y -o"$tmp" "$exe" '.rsrc/*/ICON/*' >/dev/null 2>&1
+    src="$(find "$tmp/.rsrc" -path '*/ICON/*' -type f -printf '%s %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2-)"
+    mkdir -p "$ICON_DIR"
+    [[ -n "$src" ]] && magick "$src" -thumbnail 256x256 +repage "$ICON_DIR/cortex-control.png" 2>/dev/null
+    local rc=$?
+    rm -rf "$tmp"
+    return $rc
+}
+
+cmd_desktop() {
+    local apps="${XDG_DATA_HOME:-$HOME/.local/share}/applications" icon=audio-card
+    mkdir -p "$apps"
+    if extract_icon; then icon=cortex-control; else warn "icône non extraite, icône générique utilisée"; fi
+    cat >"$apps/cortex-control.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Cortex Control
+Comment=Neural DSP Quad Cortex (Wine)
+Exec="$SELF" run
+Icon=$icon
+Categories=Audio;Music;
+StartupWMClass=cortex control.exe
+EOF
+    command -v kbuildsycoca6 >/dev/null && kbuildsycoca6 >/dev/null 2>&1 || true
+    ok "Raccourci ajouté au menu : $apps/cortex-control.desktop (icône : $icon)"
+}
+
+cmd_stop() {
+    wineserver -k 2>/dev/null || true
+    ok "Processus Wine du préfixe arrêtés"
+}
+
+cmd_uninstall() {
+    wineserver -k 2>/dev/null || true
+    rm -rf "$PREFIX"
+    rm -f "${XDG_DATA_HOME:-$HOME/.local/share}/applications/cortex-control.desktop" "$ICON_DIR/cortex-control.png"
+    ok "Préfixe et raccourci supprimés"
+}
+
+case "${1:-}" in
+    doctor)    cmd_doctor ;;
+    install)   shift; cmd_install "$@" ;;
+    run)       shift; cmd_run "$@" ;;
+    desktop)   cmd_desktop ;;
+    stop)      cmd_stop ;;
+    dxvk)      install_dxvk ;;
+    uninstall) cmd_uninstall ;;
+    *) sed -n '2,3p' "$SELF" | sed 's/^# //'; exit 1 ;;
+esac
