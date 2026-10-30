@@ -6,15 +6,29 @@ Runs **Cortex Control** (Neural DSP, Windows only) under Wine and connects it to
 **Quad Cortex** and **Quad Cortex mini** over USB: device detection, preset editing, full user
 interface.
 
-Tested with a Quad Cortex mini and Cortex Control 4.1.0 on CachyOS (KDE Plasma, Wayland), and in
-virtual machines (one-line install from scratch, Quad Cortex passed through over USB) on Arch,
-Fedora 44 and Ubuntu 26.04: see the table below.
-
 > Independent project, not affiliated with Neural DSP. Cortex Control is not included: download
 > the Windows installer from the Neural DSP website.
 
 > [!TIP]
 > **Back up your presets** before you start: this is an unofficial setup, provided as is.
+
+## Compatibility
+
+Tested in October 2026 with a Quad Cortex mini and Cortex Control 4.1.0: on a real CachyOS desktop,
+and in fresh virtual machines (one-line install, then the Quad Cortex passed through over USB).
+
+| Distribution | Wine | Status |
+|---|---|---|
+| CachyOS (KDE Plasma, Wayland) | 11.20 (`wine-cachyos`) | ✅ works: detection, presets, reboot, firmware update |
+| Arch Linux | 11.20 (official) | ✅ works: detection, presets |
+| Fedora 44 | 11.20 Staging (official) | ✅ works: detection, presets |
+| Ubuntu 26.04 | 11.0 ([WineHQ](https://gitlab.winehq.org/wine/wine/-/wikis/Debian-Ubuntu) `winehq-stable`) | ✅ works: detection, presets |
+| Ubuntu 26.04 | 10.0 (official) | ❌ the app runs but never detects the device: install Wine from WineHQ |
+| Debian (stable) | — | ⚠️ not tested with the device; enable `contrib` for winetricks, Wine 11 from WineHQ |
+
+Any distribution with **Wine 11 or later** and a Vulkan driver should work. Not tested yet: the
+full-size Quad Cortex, Cortex Cloud. Tried it elsewhere?
+[Open a test report](https://github.com/T13nou/cortex-control-linux/issues/new?template=test-report.yml).
 
 ## How it works
 
@@ -50,19 +64,11 @@ Two obstacles, two fixes:
 | Fedora          | `sudo dnf install wine winetricks p7zip-plugins ImageMagick` |
 | Debian, Ubuntu  | `sudo apt install wine winetricks 7zip imagemagick`          |
 
-On CachyOS, `wine-cachyos` works too. Tested in October 2026 (one-line install in a fresh VM, then the
-Quad Cortex mini passed through over USB):
+On CachyOS, `wine-cachyos` works too. See [Compatibility](#compatibility) for tested versions.
 
-| Distribution | Wine | Result |
-|---|---|---|
-| CachyOS | 11.20 (`wine-cachyos`) | ✅ device detected, presets, firmware update |
-| Arch | 11.20 (official) | ✅ device detected, presets |
-| Fedora 44 | 11.20 Staging (official) | ✅ device detected, presets |
-| Ubuntu 26.04 | 10.0 (official) | ❌ app runs but the device is never detected; setup wizard text unreadable |
-| Ubuntu 26.04 | 11.0 ([WineHQ](https://gitlab.winehq.org/wine/wine/-/wikis/Debian-Ubuntu) `winehq-stable`) | ✅ device detected, presets |
-
-- **Ubuntu**: install Wine 11 from the WineHQ repository first, then run the installer.
-- **Debian** (container test only): `winetricks` is in the **contrib** section, disabled by default:
+- **Ubuntu**: the official Wine 10.0 is too old; install Wine 11 from the WineHQ repository first,
+  then run the installer.
+- **Debian**: `winetricks` is in the **contrib** section, disabled by default:
   add `contrib` to `/etc/apt/sources.list.d/debian.sources` and run `sudo apt update`. A recent Wine
   also comes from the WineHQ repository.
 
