@@ -110,7 +110,8 @@ The Wine log is written to `~/.local/state/cortex-control.log`.
   Wine crash during the write could leave the device in a bad state. Use a direct USB port (no
   hub), close other applications using the device, and keep a Windows or macOS machine at hand
   as a fallback.
-- Not verified either: signing in to the Neural DSP account and Cortex Cloud sync.
+- The Neural DSP account session works and persists across restarts. Not verified yet: Cortex
+  Cloud downloads and uploads.
 
 ## Uninstall
 
