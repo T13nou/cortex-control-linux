@@ -140,6 +140,11 @@ Icon=$icon
 Categories=Audio;Music;
 StartupWMClass=cortex control.exe
 EOF
+    # The installer's own shortcut also matches the window, so the desktop pins it instead of ours.
+    if [[ -d "$apps/wine/Programs/Cortex Control" ]]; then
+        rm -rf "$apps/wine/Programs/Cortex Control"
+        ok "Removed the shortcut created by Wine (it conflicted with this one)"
+    fi
     command -v kbuildsycoca6 >/dev/null && kbuildsycoca6 >/dev/null 2>&1 || true
     ok "Menu entry added: $apps/cortex-control.desktop (icon: $icon)"
 }
