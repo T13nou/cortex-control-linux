@@ -96,6 +96,9 @@ The Wine log is written to `~/.local/state/cortex-control.log`.
 
 - **Device not detected**: `cortex-control doctor` must report "HID channel accessible". Close any other application using the Quad Cortex over MIDI. To see what
   Wine does: `WINEDEBUG=+hid,+hidraw cortex-control run`, then look for `152a` in the log.
+- **A phantom "Quad Cortex" with a warning sign** in the device picker: after the device reboots
+  (e.g. a firmware update), Wine keeps a stale entry for it. `cortex-control run` clears these
+  entries when Cortex Control is not already running; close the app and launch it again.
 - **Black window**: `cortex-control dxvk`, then relaunch.
 - **fish shell**: `~` is not expanded after `=` (`env WINEPREFIX=~/…` fails); use `$HOME`.
 - **Last resort**: a Windows virtual machine (virt-manager) with the Quad Cortex passed through over USB.
