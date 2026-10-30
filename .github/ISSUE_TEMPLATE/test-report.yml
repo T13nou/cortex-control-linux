@@ -1,0 +1,88 @@
+name: Test report
+description: Tell us how Cortex Control works on your setup, whether it works or not.
+title: "[Report] <device> on <distribution>"
+labels: ["test report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing! Every report helps, including "everything works".
+
+  - type: dropdown
+    id: device
+    attributes:
+      label: Device
+      options:
+        - Quad Cortex mini
+        - Quad Cortex (full size)
+    validations:
+      required: true
+
+  - type: input
+    id: cortex-control
+    attributes:
+      label: Cortex Control version
+      placeholder: "4.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: distro
+    attributes:
+      label: Distribution
+      placeholder: "CachyOS, Fedora 43, Ubuntu 26.04…"
+    validations:
+      required: true
+
+  - type: input
+    id: desktop
+    attributes:
+      label: Desktop environment and session
+      placeholder: "KDE Plasma 6 on Wayland, GNOME on X11…"
+    validations:
+      required: true
+
+  - type: input
+    id: versions
+    attributes:
+      label: Wine and DXVK versions
+      description: "`wine --version`; DXVK version as installed by winetricks"
+      placeholder: "wine-11.20, DXVK 3.1.1"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: works
+    attributes:
+      label: What works
+      description: Tick everything you tested successfully.
+      options:
+        - label: The application window displays correctly
+        - label: The device is detected
+        - label: Editing presets and settings
+        - label: Rebooting the device from the app
+        - label: Firmware update
+        - label: Neural DSP account sign-in
+        - label: Cortex Cloud
+        - label: Menu entry, icon and taskbar pinning
+
+  - type: textarea
+    id: problems
+    attributes:
+      label: What does not work
+      description: Describe what fails and what you see. Leave empty if everything works.
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `cortex-control doctor`
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log excerpt (optional)
+      description: "Last lines of `~/.local/state/cortex-control.log`, ideally after running with `WINEDEBUG=+hid,+hidraw`."
+      render: text

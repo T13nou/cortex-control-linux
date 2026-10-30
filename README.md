@@ -116,7 +116,7 @@ The Wine log is written to `~/.local/state/cortex-control.log`.
 ## Feedback welcome
 
 This setup has only been tested on one machine so far. If you try it, please
-[open an issue](https://github.com/T13nou/cortex-control-linux/issues/new), whether it works or not,
+[open a test report](https://github.com/T13nou/cortex-control-linux/issues/new?template=test-report.yml), whether it works or not,
 with:
 
 - your device (Quad Cortex or Quad Cortex mini) and Cortex Control version
