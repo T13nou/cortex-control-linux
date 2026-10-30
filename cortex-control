@@ -117,8 +117,11 @@ extract_icon() {
     exe="$(app_exe)"
     [[ -n "$exe" ]] && command -v 7z >/dev/null && command -v magick >/dev/null || return 1
     tmp="$(mktemp -d)"
-    7z x -y -o"$tmp" "$exe" '.rsrc/*/ICON/*' >/dev/null 2>&1
+    7z x -y -o"$tmp" "$exe" '.rsrc' >/dev/null 2>&1
     src="$(find "$tmp/.rsrc" -path '*/ICON/*' -type f -printf '%s %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2-)"
+    # Fallback: the icon winemenubuilder extracted when the installer created its shortcut.
+    [[ -n "$src" ]] || src="$(find "${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor" -path '*/apps/*_Cortex Control.0.png' \
+        -printf '%s %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2-)"
     mkdir -p "$ICON_DIR"
     [[ -n "$src" ]] && magick "$src" -thumbnail 256x256 +repage "$ICON_DIR/cortex-control.png" 2>/dev/null
     local rc=$?
