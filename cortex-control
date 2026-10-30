@@ -140,7 +140,7 @@ cmd_run() {
     mkdir -p "$(dirname "$LOG")"
     # Only while Cortex Control is closed: its device must not vanish under it.
     pgrep -f 'Cortex Control\.exe' >/dev/null || forget_stale_devices
-    cd "$(dirname "$exe")"
+    cd "$(dirname "$exe")" || die "cannot enter $(dirname "$exe")"
     exec wine "$exe" "$@" >>"$LOG" 2>&1
 }
 

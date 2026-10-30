@@ -1,5 +1,7 @@
 # Cortex Control on Linux
 
+[![shellcheck](https://github.com/T13nou/cortex-control-linux/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/T13nou/cortex-control-linux/actions/workflows/shellcheck.yml)
+
 Runs **Cortex Control** (Neural DSP, Windows only) under Wine and connects it to the
 **Quad Cortex** and **Quad Cortex mini** over USB: device detection, preset editing, full user
 interface.
