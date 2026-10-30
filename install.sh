@@ -55,24 +55,32 @@ EOF
 ask "Continue?" || die "cancelled, nothing was changed"
 
 step "Packages"
-local cmd missing=() pkgs=() pm=() wine_version major
+local cmd missing=() pkgs=() pm=() yes wine_version major
 for cmd in wine winetricks 7z magick curl tar; do command -v "$cmd" >/dev/null || missing+=("$cmd"); done
 if (( ${#missing[@]} )); then
     if command -v pacman >/dev/null; then
         declare -A PKG=([wine]=wine [winetricks]=winetricks [7z]=7zip [magick]=imagemagick [curl]=curl [tar]=tar)
-        pm=(sudo pacman -S --needed)
+        pm=(sudo pacman -S --needed); yes=--noconfirm
     elif command -v dnf >/dev/null; then
         declare -A PKG=([wine]=wine [winetricks]=winetricks [7z]=p7zip-plugins [magick]=ImageMagick [curl]=curl [tar]=tar)
-        pm=(sudo dnf install)
+        pm=(sudo dnf install); yes=-y
     elif command -v apt-get >/dev/null; then
         declare -A PKG=([wine]=wine [winetricks]=winetricks [7z]=7zip [magick]=imagemagick [curl]=curl [tar]=tar)
-        pm=(sudo apt-get install)
+        pm=(sudo apt-get install); yes=-y
+        # apt-cache show succeeds for a package that is only referenced: check the install candidate.
+        if [[ " ${missing[*]} " == *" winetricks "* ]] \
+            && [[ "$(apt-cache policy winetricks 2>/dev/null | sed -n 's/^ *Candidate: *//p')" =~ ^(|\(none\))$ ]]; then
+            die "winetricks is not in your apt sources. On Debian it is in the contrib section: add 'contrib' to your
+       sources (/etc/apt/sources.list.d/debian.sources), run 'sudo apt update', then run this again"
+        fi
     else
         die "missing: ${missing[*]}. Install them with your package manager, then run this again"
     fi
     for cmd in "${missing[@]}"; do pkgs+=("${PKG[$cmd]}"); done
     echo "  Missing: ${missing[*]}"
     ask "Run '${pm[*]} ${pkgs[*]}'?" || die "install ${pkgs[*]} yourself, then run this again"
+    # CORTEX_YES=1 also answers the package manager's own question.
+    [[ "${CORTEX_YES:-}" == 1 ]] && pm+=("$yes")
     on_tty "${pm[@]}" "${pkgs[@]}"
 fi
 wine_version="$(wine --version)"

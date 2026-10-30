@@ -13,4 +13,4 @@ jobs:
       - name: Lint the scripts
         run: |
           shellcheck --version
-          shellcheck --severity=warning cortex-control install.sh uninstall.sh
+          shellcheck --severity=warning cortex-control install.sh uninstall.sh tests/*.sh

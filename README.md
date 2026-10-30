@@ -49,8 +49,16 @@ Two obstacles, two fixes:
 | Fedora          | `sudo dnf install wine winetricks p7zip-plugins ImageMagick` |
 | Debian, Ubuntu  | `sudo apt install wine winetricks 7zip imagemagick`          |
 
-On CachyOS, `wine-cachyos` works too. On Debian and Ubuntu, a recent Wine is available from the
-[WineHQ repository](https://gitlab.winehq.org/wine/wine/-/wikis/Download).
+On CachyOS, `wine-cachyos` works too. Checked in containers (October 2026):
+
+- **Arch**: Wine 11.20 from the official repositories, nothing else to do.
+- **Fedora**: Wine 11.20 (Staging) from the official repositories, nothing else to do.
+- **Ubuntu**: the official repositories ship **Wine 10.0**, too old for device detection. Install
+  Wine 11 or later from the [WineHQ repository](https://gitlab.winehq.org/wine/wine/-/wikis/Download)
+  first.
+- **Debian**: `winetricks` is in the **contrib** section, disabled by default: add `contrib` to
+  `/etc/apt/sources.list.d/debian.sources` and run `sudo apt update`. A recent Wine also comes from
+  the WineHQ repository.
 
 ## Installation
 

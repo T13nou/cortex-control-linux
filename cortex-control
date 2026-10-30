@@ -79,7 +79,7 @@ app_exe() {
 }
 
 cmd_doctor() {
-    local bad=0 node v
+    local bad=0 node v latest
     v="$(installed_version)"
     echo "Checks:"
     if ! command -v wine >/dev/null; then
@@ -104,6 +104,16 @@ cmd_doctor() {
     if [[ -d "$PREFIX/drive_c" ]]; then ok "Wine prefix: $PREFIX"; else warn "No prefix yet: run '$0 install'"; bad=1; fi
     if has_dxvk; then ok "DXVK installed"; else warn "DXVK missing (black window): $0 dxvk"; bad=1; fi
     if [[ -n "$(app_exe)" ]]; then ok "Cortex Control ${v:+v$v }installed: $(app_exe)"; else warn "Cortex Control not installed yet"; bad=1; fi
+
+    # Not counted as a failure: the installed version still works.
+    latest="$(latest_version)"
+    if [[ -z "$latest" ]]; then
+        warn "could not check for a newer Cortex Control ($CC_DOWNLOADS unreachable)"
+    elif [[ -n "$v" ]] && newer "$latest" "$v"; then
+        warn "Cortex Control v$latest is available: $0 update"
+    elif [[ -n "$v" ]]; then
+        ok "Cortex Control v$v is the latest version"
+    fi
     return $bad
 }
 
@@ -113,7 +123,7 @@ cc_url() {
 
 # Newest Windows installer listed on Neural DSP's downloads page, empty if the page cannot be read.
 latest_version() {
-    curl -fsSL -A 'Mozilla/5.0' "$CC_DOWNLOADS" 2>/dev/null \
+    curl -fsSL --max-time 10 -A 'Mozilla/5.0' "$CC_DOWNLOADS" 2>/dev/null \
         | grep -oE 'cortex-control-installers/v_[0-9.]+/windows/' \
         | sed -E 's|.*/v_([0-9.]+)/.*|\1|' | sort -uV | tail -1 || true
 }
