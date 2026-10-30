@@ -11,15 +11,9 @@ BRANCH="${CORTEX_BRANCH:-main}"
 DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
 APP_DIR="$DATA/cortex-control-linux"
 BIN_DIR="$HOME/.local/bin"
-CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/cortex-control-linux"
 PREFIX="${CORTEX_PREFIX:-$DATA/wineprefixes/cortex-control}"
 RULE=/etc/udev/rules.d/70-quad-cortex.rules
 MIN_WINE=11
-
-# The Cortex Control version this was tested with, from https://neuraldsp.com/downloads
-CC_VERSION=4.1.0
-CC_URL="https://downloads.neuraldsp.com/file/cortex-control-installers/v_$CC_VERSION/windows/Cortex%20Control%20v$CC_VERSION.exe"
-CC_SHA256=c03942a0631afd195d3d70febf91384bf39cb7101014146f26f5ba65fd73228c
 
 step() { printf '\n\e[1;36m==> %s\e[0m\n' "$*"; }
 ok()   { printf '  \e[32mOK\e[0m  %s\n' "$*"; }
@@ -123,26 +117,11 @@ fi
 if find "$PREFIX/drive_c" -iname 'Cortex Control.exe' -print -quit 2>/dev/null | grep -q .; then
     step "Cortex Control is already installed: refreshing the menu entry"
     "$APP_DIR/cortex-control" desktop
+    echo "  To look for a newer Cortex Control: cortex-control update"
 else
-    step "Cortex Control installer"
-    if [[ -n "$INSTALLER" ]]; then
-        [[ "$(sha256sum "$INSTALLER" | cut -d' ' -f1)" == "$CC_SHA256" ]] \
-            || warn "not the tested v$CC_VERSION installer: it may or may not work"
-    else
-        INSTALLER="$CACHE_DIR/Cortex Control v$CC_VERSION.exe"
-        if [[ ! -f "$INSTALLER" ]]; then
-            echo "  Downloading Cortex Control v$CC_VERSION from Neural DSP…"
-            mkdir -p "$CACHE_DIR"
-            curl -fL --progress-bar -o "$INSTALLER.part" "$CC_URL" \
-                || die "download failed: get the installer from https://neuraldsp.com/downloads and pass its path"
-            mv "$INSTALLER.part" "$INSTALLER"
-        fi
-        [[ "$(sha256sum "$INSTALLER" | cut -d' ' -f1)" == "$CC_SHA256" ]] \
-            || { rm -f "$INSTALLER"; die "checksum mismatch on the downloaded installer"; }
-        ok "Verified $INSTALLER"
-    fi
+    # Downloads the tested installer from Neural DSP (checksum verified) unless one was given.
     step "Installing under Wine (the Windows setup wizard opens: keep the default options)"
-    on_tty "$APP_DIR/cortex-control" install "$INSTALLER"
+    on_tty "$APP_DIR/cortex-control" install ${INSTALLER:+"$INSTALLER"}
 fi
 
 step "Checks"

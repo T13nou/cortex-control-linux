@@ -75,7 +75,8 @@ The script asks before each step that changes your system:
 
 Already have the installer? Pass its path:
 `curl -fsSL …/install.sh | bash -s -- ~/Downloads/"Cortex Control v4.1.0.exe"`.
-Running the one-liner again updates the scripts and keeps your existing installation.
+Running the one-liner again updates the scripts and keeps your existing installation; see
+[Updating](#updating) for Cortex Control itself.
 
 ### Manual
 
@@ -98,9 +99,11 @@ cd cortex-control-linux
    (`~/.local/share/wineprefixes/cortex-control`, override with the `CORTEX_PREFIX` variable):
 
    ```sh
-   ./cortex-control install ~/Downloads/"Cortex Control v4.1.0.exe"
+   ./cortex-control install
    ```
 
+   Without an argument, it downloads the tested installer from Neural DSP and checks its SHA-256;
+   you can also pass one: `./cortex-control install ~/Downloads/"Cortex Control v4.1.0.exe"`.
    The script creates the prefix (Windows 10), installs DXVK, runs the installer and adds a
    "Cortex Control" entry to the application menu, with the original icon. If the installer offers
    the Neural DSP / Thesycon USB driver, skip it.
@@ -113,12 +116,34 @@ cd cortex-control-linux
 
 4. Launch it from the menu, or with `./cortex-control run`.
 
+## Updating
+
+```sh
+cortex-control update
+```
+
+1. **The scripts** are updated first: `git pull` for a clone, otherwise a fresh copy from GitHub.
+   If the udev rule changed, it offers to install the new one (sudo).
+2. **Cortex Control** is checked against the newest installer listed on
+   [Neural DSP's downloads page](https://neuraldsp.com/downloads). If a newer version exists, it asks,
+   downloads it and installs it over the current one: your settings and sign-in stay in the prefix.
+
+Versions newer than the tested one (v4.1.0) cannot be checksum-verified (Neural DSP publishes no
+checksums) and have not been tested here: if something breaks, please
+[open a test report](https://github.com/T13nou/cortex-control-linux/issues/new?template=test-report.yml).
+To install a specific installer instead: `cortex-control update --app ~/Downloads/"Cortex Control vX.Y.Z.exe"`.
+
+Prefer this command to an update offered inside Cortex Control: the in-app updater has not been
+tested under Wine. A new Cortex Control may also offer a firmware update; see the firmware notes in
+[Known limitations](#known-limitations).
+
 ## Commands
 
 | Command                         | Purpose                                                    |
 |---------------------------------|------------------------------------------------------------|
 | `cortex-control doctor`         | Checks Wine, USB access, audio, the prefix and DXVK        |
-| `cortex-control install <exe>`  | Creates the prefix, installs DXVK, then Cortex Control     |
+| `cortex-control install [exe]`  | Creates the prefix, installs DXVK, then Cortex Control (downloaded if no exe is given) |
+| `cortex-control update`         | Updates the scripts, then Cortex Control if a newer version exists |
 | `cortex-control run`            | Launches Cortex Control                                    |
 | `cortex-control stop`           | Kills every Wine process in the prefix                     |
 | `cortex-control dxvk`           | Adds DXVK to an existing prefix (black window)             |

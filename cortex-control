@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Cortex Control (Neural DSP) under Wine for the Quad Cortex and Quad Cortex mini.
-# Usage: cortex-control {doctor|install <installer.exe>|run|stop|dxvk|desktop|uninstall}
+# Usage: cortex-control {doctor|install [installer.exe]|run|stop|update|dxvk|desktop|uninstall}
 set -euo pipefail
 
 VID=152a  # Thesycon, shared with other audio brands: devices are also matched by name
@@ -8,6 +8,15 @@ MIN_WINE=11  # Wine 10.0 lacks the cfgmgr32 calls Cortex Control uses to find HI
 PREFIX="${CORTEX_PREFIX:-${XDG_DATA_HOME:-$HOME/.local/share}/wineprefixes/cortex-control}"
 LOG="${XDG_STATE_HOME:-$HOME/.local/state}/cortex-control.log"
 SELF="$(readlink -f "$0")"
+REPO=T13nou/cortex-control-linux
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/cortex-control-linux"
+VERSION_FILE="$PREFIX/cortex-control-version"
+UDEV_RULE=/etc/udev/rules.d/70-quad-cortex.rules
+
+# The Cortex Control version this project was tested with, and where Neural DSP lists its installers.
+CC_TESTED=4.1.0
+CC_TESTED_SHA256=c03942a0631afd195d3d70febf91384bf39cb7101014146f26f5ba65fd73228c
+CC_DOWNLOADS=https://neuraldsp.com/downloads
 
 export WINEPREFIX="$PREFIX"
 export WINEARCH=win64
@@ -18,6 +27,16 @@ export WINEDEBUG="${WINEDEBUG:--all}"
 ok()   { printf '  \e[32mOK\e[0m  %s\n' "$*"; }
 warn() { printf '  \e[33m!!\e[0m  %s\n' "$*"; }
 die()  { printf '\e[31mError:\e[0m %s\n' "$*" >&2; exit 1; }
+
+# Questions are read from the terminal, even when this runs from the one-line installer's pipe.
+has_tty() { { : </dev/tty; } 2>/dev/null; }
+ask() {
+    local ans
+    [[ "${CORTEX_YES:-}" == 1 ]] && return 0
+    has_tty || return 1
+    read -r -p "  $1 [y/N] " ans </dev/tty
+    [[ "$ans" =~ ^[YyOo]$ ]]
+}
 
 # Prints "<hidraw name> <product id>" for the first Neural DSP device, nothing if none is plugged in.
 qc_device() {
@@ -60,7 +79,8 @@ app_exe() {
 }
 
 cmd_doctor() {
-    local bad=0 node
+    local bad=0 node v
+    v="$(installed_version)"
     echo "Checks:"
     if ! command -v wine >/dev/null; then
         warn "Wine not found: install it with your package manager"; bad=1
@@ -81,16 +101,95 @@ cmd_doctor() {
 
     if grep -qi 'Quad Cortex' /proc/asound/cards 2>/dev/null; then ok "ALSA sound card present"; else warn "No Quad Cortex sound card in ALSA"; fi
 
-    if [[ -d "$PREFIX/drive_c" ]]; then ok "Wine prefix: $PREFIX"; else warn "No prefix yet: run '$0 install <installer.exe>'"; bad=1; fi
+    if [[ -d "$PREFIX/drive_c" ]]; then ok "Wine prefix: $PREFIX"; else warn "No prefix yet: run '$0 install'"; bad=1; fi
     if has_dxvk; then ok "DXVK installed"; else warn "DXVK missing (black window): $0 dxvk"; bad=1; fi
-    if [[ -n "$(app_exe)" ]]; then ok "Cortex Control installed: $(app_exe)"; else warn "Cortex Control not installed yet"; bad=1; fi
+    if [[ -n "$(app_exe)" ]]; then ok "Cortex Control ${v:+v$v }installed: $(app_exe)"; else warn "Cortex Control not installed yet"; bad=1; fi
     return $bad
+}
+
+cc_url() {
+    echo "https://downloads.neuraldsp.com/file/cortex-control-installers/v_$1/windows/Cortex%20Control%20v$1.exe"
+}
+
+# Newest Windows installer listed on Neural DSP's downloads page, empty if the page cannot be read.
+latest_version() {
+    curl -fsSL -A 'Mozilla/5.0' "$CC_DOWNLOADS" 2>/dev/null \
+        | grep -oE 'cortex-control-installers/v_[0-9.]+/windows/' \
+        | sed -E 's|.*/v_([0-9.]+)/.*|\1|' | sort -uV | tail -1 || true
+}
+
+# Version in an installer's file name ("Cortex Control v4.1.0.exe" -> 4.1.0).
+installer_version() {
+    basename "$1" | sed -nE 's/.*v([0-9]+(\.[0-9]+)+)\.exe$/\1/p'
+}
+
+# Installed version, recorded at install time; empty when unknown. The executable cannot tell:
+# its version resource says 0.0.0.
+installed_version() {
+    [[ -s "$VERSION_FILE" ]] && cat "$VERSION_FILE"
+    return 0
+}
+
+# True when version $1 is newer than version $2.
+newer() {
+    [[ "$1" != "$2" && "$(printf '%s\n' "$1" "$2" | sort -V | tail -1)" == "$1" ]]
+}
+
+# Downloads an installer from Neural DSP into the cache and prints its path.
+download_installer() {
+    local version="$1" file="$CACHE_DIR/Cortex Control v$1.exe"
+    mkdir -p "$CACHE_DIR"
+    if [[ ! -f "$file" ]]; then
+        echo "Downloading Cortex Control v$version from Neural DSP…" >&2
+        curl -fL --progress-bar -o "$file.part" "$(cc_url "$version")" \
+            || die "download failed: get the installer from $CC_DOWNLOADS and pass its path"
+        mv "$file.part" "$file"
+    fi
+    if [[ "$version" == "$CC_TESTED" ]]; then
+        [[ "$(sha256sum "$file" | cut -d' ' -f1)" == "$CC_TESTED_SHA256" ]] \
+            || { rm -f "$file"; die "checksum mismatch on the downloaded installer"; }
+        ok "Verified $file" >&2
+    else
+        warn "v$version is newer than the tested v$CC_TESTED; Neural DSP publishes no checksum to verify it" >&2
+    fi
+    echo "$file"
+}
+
+# Fingerprint of the installed executable, to tell whether an installer really changed it.
+app_fingerprint() {
+    local exe
+    exe="$(app_exe)"
+    [[ -n "$exe" ]] && sha256sum "$exe" | cut -d' ' -f1
+    return 0
+}
+
+# Runs an installer; fails if it reported an error and left the executable as it was
+# (wizard cancelled, or an error before anything was installed).
+run_installer() {
+    local before rc=0
+    mkdir -p "$(dirname "$LOG")"
+    before="$(app_fingerprint)"
+    echo "Running the installer (accept the default options)…"
+    echo "If the installer offers the Neural DSP/Thesycon USB driver, untick it or ignore its failure: it is not used under Wine."
+    wine "$1" >>"$LOG" 2>&1 || rc=$?
+    wineserver -w
+    [[ -n "$(app_exe)" ]] || die "Cortex Control.exe not found in the prefix. Log: $LOG"
+    if (( rc != 0 )) && [[ "$(app_fingerprint)" == "$before" ]]; then
+        warn "the installer stopped with an error (code $rc) and changed nothing (cancelled?)"
+        return 1
+    fi
+    (( rc == 0 )) || warn "the installer returned an error code $rc (often the USB driver), but Cortex Control was installed"
+    installer_version "$1" >"$VERSION_FILE"
 }
 
 cmd_install() {
     local exe="${1:-}"
-    [[ -f "$exe" ]] || die "give the installer path, e.g.: $0 install ~/Downloads/'Cortex Control v4.1.0.exe'"
     command -v wine >/dev/null || die "Wine not found: install it with your package manager"
+    if [[ -z "$exe" ]]; then
+        exe="$(download_installer "$CC_TESTED")"
+    else
+        [[ -f "$exe" ]] || die "installer not found: $exe"
+    fi
 
     mkdir -p "$(dirname "$PREFIX")" "$(dirname "$LOG")"
     if [[ ! -d "$PREFIX/drive_c" ]]; then
@@ -101,14 +200,88 @@ cmd_install() {
     fi
     has_dxvk || install_dxvk
 
-    echo "Running the installer (accept the default options)…"
-    echo "If the installer offers the Neural DSP/Thesycon USB driver, untick it or ignore its failure: it is not used under Wine."
-    wine "$exe" >>"$LOG" 2>&1 || warn "the installer returned an error code (often the USB driver); checking…"
-    wineserver -w
-
-    [[ -n "$(app_exe)" ]] || die "Cortex Control.exe not found in the prefix. Log: $LOG"
+    run_installer "$exe" || die "Cortex Control was not installed. Log: $LOG"
     ok "Installed: $(app_exe)"
     cmd_desktop
+}
+
+# Offers to install the udev rule shipped with the scripts when /etc has another version.
+check_udev_rule() {
+    local src
+    src="$(dirname "$SELF")/udev/70-quad-cortex.rules"
+    [[ -f "$src" ]] && ! cmp -s "$src" "$UDEV_RULE" || return 0
+    warn "the udev rule changed in this version ($UDEV_RULE)"
+    if ask "Install the new one with sudo?"; then
+        sudo install -m 644 "$src" "$UDEV_RULE" </dev/tty
+        sudo udevadm control --reload </dev/tty
+        sudo udevadm trigger --subsystem-match=hidraw </dev/tty
+        ok "udev rule updated"
+    else
+        echo "  Later: sudo install -m 644 '$src' $UDEV_RULE && sudo udevadm control --reload"
+    fi
+}
+
+# Replaces the scripts with the latest ones: git pull for a clone, otherwise a fresh copy from GitHub.
+update_scripts() {
+    local dir tmp
+    dir="$(dirname "$SELF")"
+    if git -C "$dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        git -C "$dir" pull --ff-only || die "git pull failed in $dir"
+    else
+        [[ -f "$dir/udev/70-quad-cortex.rules" ]] || die "$dir does not look like cortex-control-linux"
+        tmp="$(mktemp -d)"
+        curl -fsSL "https://github.com/$REPO/archive/refs/heads/main.tar.gz" | tar -xz -C "$tmp" --strip-components=1 \
+            || { rm -rf "$tmp"; die "could not download the scripts from GitHub"; }
+        # The running script keeps reading its old copy: replacing the directory is safe.
+        rm -rf "$dir" && mv "$tmp" "$dir"
+    fi
+    ok "Scripts up to date"
+}
+
+# Installs a newer Cortex Control over the current one (settings are kept in the prefix).
+update_app() {
+    local exe="${1:-}" current latest
+    [[ -n "$(app_exe)" ]] || die "Cortex Control is not installed: $0 install"
+    current="$(installed_version)"
+    if [[ -z "$exe" ]]; then
+        latest="$(latest_version)"
+        [[ -n "$latest" ]] || die "could not read the latest version on $CC_DOWNLOADS; pass an installer: $0 update --app <installer.exe>"
+        if [[ -z "$current" ]]; then
+            # Installed before versions were recorded: assume the tested one rather than reinstalling.
+            [[ "$latest" == "$CC_TESTED" ]] && { echo "$CC_TESTED" >"$VERSION_FILE"; current="$CC_TESTED"; }
+        fi
+        if [[ -n "$current" ]] && ! newer "$latest" "$current"; then
+            ok "Cortex Control v$current is the latest version"
+            return 0
+        fi
+        echo "  Cortex Control v${current:-unknown} installed, v$latest available."
+        ask "Update Cortex Control now?" || { echo "  Not updated."; return 0; }
+        exe="$(download_installer "$latest")"
+    else
+        [[ -f "$exe" ]] || die "installer not found: $exe"
+    fi
+    if pgrep -f 'Cortex Control\.exe' >/dev/null; then
+        ask "Cortex Control is running: close it to update?" || { echo "  Not updated."; return 0; }
+    fi
+    wineserver -k 2>/dev/null || true
+    if ! run_installer "$exe"; then
+        echo "  Cortex Control was not updated."
+        return 1
+    fi
+    ok "Cortex Control updated to v$(installed_version)"
+    cmd_desktop
+}
+
+# update: scripts first, then the rest runs from the new copy of this script.
+cmd_update() {
+    if [[ "${1:-}" == --app ]]; then
+        shift
+        check_udev_rule
+        update_app "$@"
+        return
+    fi
+    update_scripts
+    exec "$SELF" update --app "$@"
 }
 
 # When the Quad Cortex re-enumerates (reboot, firmware update), Wine registers its HID channel
@@ -130,7 +303,7 @@ forget_stale_devices() {
 cmd_run() {
     local exe node
     exe="$(app_exe)"
-    [[ -n "$exe" ]] || die "Cortex Control is not installed: $0 install <installer.exe>"
+    [[ -n "$exe" ]] || die "Cortex Control is not installed: $0 install"
     node="$(qc_hidraw)"
     if [[ -z "$node" ]]; then
         warn "Quad Cortex not detected: plug it in before launching, otherwise Cortex Control will not see it."
@@ -213,7 +386,7 @@ cmd_stop() {
 
 cmd_uninstall() {
     wineserver -k 2>/dev/null || true
-    rm -rf "$PREFIX"
+    rm -rf "$PREFIX" "$CACHE_DIR"
     rm -f "${XDG_DATA_HOME:-$HOME/.local/share}/applications/cortex-control.desktop" "$ICON_DIR/cortex-control.png"
     ok "Prefix, menu entry and icon removed"
 }
@@ -224,6 +397,7 @@ case "${1:-}" in
     run)       shift; cmd_run "$@" ;;
     desktop)   cmd_desktop ;;
     stop)      cmd_stop ;;
+    update)    shift; cmd_update "$@" ;;
     dxvk)      install_dxvk ;;
     uninstall) cmd_uninstall ;;
     *) sed -n '2,3p' "$SELF" | sed 's/^# //'; exit 1 ;;
