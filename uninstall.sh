@@ -29,14 +29,16 @@ on_tty() { if has_tty; then "$@" </dev/tty; else "$@" </dev/null; fi; }
 
 # Called on the last line, once bash has read the whole script from the pipe.
 main() {
-    local desk f
+    local desk f ws
     [[ $EUID -ne 0 ]] || die "run this as your normal user, not root: it asks for sudo when needed"
 
     echo "This removes Cortex Control, its Wine prefix ($PREFIX) and its settings."
     ask "Continue?" || die "cancelled, nothing was changed"
 
     if [[ -d "$PREFIX" ]]; then
-        command -v wineserver >/dev/null && WINEPREFIX="$PREFIX" wineserver -k 2>/dev/null || true
+        # Debian and Ubuntu keep wineserver out of PATH.
+        ws="$(type -P wineserver || compgen -G '/usr/lib/*/wine/wineserver' | head -1 || true)"
+        [[ -n "$ws" ]] && WINEPREFIX="$PREFIX" "$ws" -k 2>/dev/null || true
         rm -rf "$PREFIX"
         ok "Wine prefix removed"
     fi

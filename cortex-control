@@ -24,6 +24,14 @@ export WINEARCH=win64
 export WINEDLLOVERRIDES="winemenubuilder.exe=d${WINEDLLOVERRIDES:+;$WINEDLLOVERRIDES}"
 export WINEDEBUG="${WINEDEBUG:--all}"
 
+# Debian and Ubuntu keep wineserver out of PATH (only in Wine's library directory).
+WINESERVER_BIN="$(type -P wineserver || compgen -G '/usr/lib/*/wine/wineserver' | head -1 || true)"
+export WINESERVER="$WINESERVER_BIN"  # winetricks finds it through this variable
+wineserver() {
+    [[ -n "$WINESERVER_BIN" ]] || { printf 'Error: wineserver not found\n' >&2; exit 1; }
+    "$WINESERVER_BIN" "$@"
+}
+
 ok()   { printf '  \e[32mOK\e[0m  %s\n' "$*"; }
 warn() { printf '  \e[33m!!\e[0m  %s\n' "$*"; }
 die()  { printf '\e[31mError:\e[0m %s\n' "$*" >&2; exit 1; }
@@ -204,7 +212,11 @@ cmd_install() {
     mkdir -p "$(dirname "$PREFIX")" "$(dirname "$LOG")"
     if [[ ! -d "$PREFIX/drive_c" ]]; then
         echo "Creating prefix $PREFIX…"
-        wineboot -i >>"$LOG" 2>&1
+        # Without wine-mono on the system, Wine asks in a dialog to install it, which blocks the
+        # install. Cortex Control is a native C++ app and does not need .NET: Mono stays disabled
+        # (also for the prefix updates that follow Wine upgrades).
+        WINEDLLOVERRIDES="$WINEDLLOVERRIDES;mscoree=" wineboot -i >>"$LOG" 2>&1
+        wine reg add 'HKCU\Software\Wine\DllOverrides' /v mscoree /d '' /f >>"$LOG" 2>&1
         wine winecfg -v win10 >>"$LOG" 2>&1
         wineserver -w
     fi

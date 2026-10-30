@@ -6,8 +6,9 @@ Runs **Cortex Control** (Neural DSP, Windows only) under Wine and connects it to
 **Quad Cortex** and **Quad Cortex mini** over USB: device detection, preset editing, full user
 interface.
 
-Tested with a Quad Cortex mini on CachyOS (KDE Plasma, Wayland) with Wine 11.20, DXVK 3.1.1 and
-Cortex Control 4.1.0.
+Tested with a Quad Cortex mini and Cortex Control 4.1.0 on CachyOS (KDE Plasma, Wayland), and in
+virtual machines (one-line install from scratch, Quad Cortex passed through over USB) on Arch,
+Fedora 44 and Ubuntu 26.04: see the table below.
 
 > Independent project, not affiliated with Neural DSP. Cortex Control is not included: download
 > the Windows installer from the Neural DSP website.
@@ -49,16 +50,21 @@ Two obstacles, two fixes:
 | Fedora          | `sudo dnf install wine winetricks p7zip-plugins ImageMagick` |
 | Debian, Ubuntu  | `sudo apt install wine winetricks 7zip imagemagick`          |
 
-On CachyOS, `wine-cachyos` works too. Checked in containers (October 2026):
+On CachyOS, `wine-cachyos` works too. Tested in October 2026 (one-line install in a fresh VM, then the
+Quad Cortex mini passed through over USB):
 
-- **Arch**: Wine 11.20 from the official repositories, nothing else to do.
-- **Fedora**: Wine 11.20 (Staging) from the official repositories, nothing else to do.
-- **Ubuntu**: the official repositories ship **Wine 10.0**, too old for device detection. Install
-  Wine 11 or later from the [WineHQ repository](https://gitlab.winehq.org/wine/wine/-/wikis/Download)
-  first.
-- **Debian**: `winetricks` is in the **contrib** section, disabled by default: add `contrib` to
-  `/etc/apt/sources.list.d/debian.sources` and run `sudo apt update`. A recent Wine also comes from
-  the WineHQ repository.
+| Distribution | Wine | Result |
+|---|---|---|
+| CachyOS | 11.20 (`wine-cachyos`) | ✅ device detected, presets, firmware update |
+| Arch | 11.20 (official) | ✅ device detected, presets |
+| Fedora 44 | 11.20 Staging (official) | ✅ device detected, presets |
+| Ubuntu 26.04 | 10.0 (official) | ❌ app runs but the device is never detected; setup wizard text unreadable |
+| Ubuntu 26.04 | 11.0 ([WineHQ](https://gitlab.winehq.org/wine/wine/-/wikis/Debian-Ubuntu) `winehq-stable`) | ✅ device detected, presets |
+
+- **Ubuntu**: install Wine 11 from the WineHQ repository first, then run the installer.
+- **Debian** (container test only): `winetricks` is in the **contrib** section, disabled by default:
+  add `contrib` to `/etc/apt/sources.list.d/debian.sources` and run `sudo apt update`. A recent Wine
+  also comes from the WineHQ repository.
 
 ## Installation
 

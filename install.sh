@@ -4,6 +4,7 @@
 # With an installer you already have:
 #   curl -fsSL …/install.sh | bash -s -- ~/Downloads/'Cortex Control v4.1.0.exe'
 # CORTEX_YES=1 answers yes to every question (sudo may still ask for your password).
+# CORTEX_SOURCE=<dir> installs the scripts from a local copy instead of GitHub (tests).
 set -euo pipefail
 
 REPO=T13nou/cortex-control-linux
@@ -100,8 +101,13 @@ fi
 step "Scripts"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "${TMP_DIR:-}"' EXIT
-curl -fsSL "https://github.com/$REPO/archive/refs/heads/$BRANCH.tar.gz" | tar -xz -C "$TMP_DIR" --strip-components=1 \
-    || die "could not download the scripts from GitHub"
+if [[ -n "${CORTEX_SOURCE:-}" ]]; then
+    # Tests: install from a local copy of the project instead of GitHub.
+    cp -a "$CORTEX_SOURCE/." "$TMP_DIR/" && rm -rf "$TMP_DIR/.git"
+else
+    curl -fsSL "https://github.com/$REPO/archive/refs/heads/$BRANCH.tar.gz" | tar -xz -C "$TMP_DIR" --strip-components=1 \
+        || die "could not download the scripts from GitHub"
+fi
 rm -rf "$APP_DIR"
 mkdir -p "$(dirname "$APP_DIR")" "$BIN_DIR"
 mv "$TMP_DIR" "$APP_DIR"
