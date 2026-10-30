@@ -113,6 +113,19 @@ The Wine log is written to `~/.local/state/cortex-control.log`.
 - The Neural DSP account session works and persists across restarts. Not verified yet: Cortex
   Cloud downloads and uploads.
 
+## Feedback welcome
+
+This setup has only been tested on one machine so far. If you try it, please
+[open an issue](https://github.com/T13nou/cortex-control-linux/issues/new), whether it works or not,
+with:
+
+- your device (Quad Cortex or Quad Cortex mini) and Cortex Control version
+- your distribution, desktop environment (and X11 or Wayland), Wine and DXVK versions
+- what works and what does not (detection, preset editing, firmware update, Cortex Cloud…)
+- the output of `cortex-control doctor`
+
+Reports from full-size Quad Cortex owners are especially useful.
+
 ## Uninstall
 
 ```sh
