@@ -24,10 +24,11 @@ and in fresh virtual machines (one-line install, then the Quad Cortex passed thr
 | Fedora 44 | 11.20 Staging (official) | ✅ works: detection, presets |
 | Ubuntu 26.04 | 11.0 ([WineHQ](https://gitlab.winehq.org/wine/wine/-/wikis/Debian-Ubuntu) `winehq-stable`) | ✅ works: detection, presets |
 | Ubuntu 26.04 | 10.0 (official) | ❌ the app runs but never detects the device: install Wine from WineHQ |
-| Debian (stable) | — | ⚠️ not tested with the device; enable `contrib` for winetricks, Wine 11 from WineHQ |
+| Debian 13 | 11.0 ([WineHQ](https://gitlab.winehq.org/wine/wine/-/wikis/Debian-Ubuntu) `winehq-stable`) | ✅ works: detection, presets (enable `contrib` for winetricks) |
+| Debian 13 | 10.0 (official) | ❌ DXVK cannot be installed (64-bit-only Wine), and Wine 10 does not detect the device |
 
-Any distribution with **Wine 11 or later** and a Vulkan driver should work. Not tested yet: the
-full-size Quad Cortex, Cortex Cloud. Tried it elsewhere?
+Any distribution with **Wine 11 or later** and a Vulkan driver should work. On Debian and Ubuntu, get
+it from WineHQ. Not tested yet: the full-size Quad Cortex, Cortex Cloud. Tried it elsewhere?
 [Open a test report](https://github.com/T13nou/cortex-control-linux/issues/new?template=test-report.yml).
 
 ## How it works
@@ -68,9 +69,10 @@ On CachyOS, `wine-cachyos` works too. See [Compatibility](#compatibility) for te
 
 - **Ubuntu**: the official Wine 10.0 is too old; install Wine 11 from the WineHQ repository first,
   then run the installer.
-- **Debian**: `winetricks` is in the **contrib** section, disabled by default:
-  add `contrib` to `/etc/apt/sources.list.d/debian.sources` and run `sudo apt update`. A recent Wine
-  also comes from the WineHQ repository.
+- **Debian**: install Wine 11 from the WineHQ repository first (the official Wine 10 can neither
+  install DXVK nor detect the device). `winetricks` is in the **contrib** section, disabled by default:
+  add `contrib` to the `Components:` lines of `/etc/apt/sources.list.d/debian.sources` and run
+  `sudo apt update`.
 
 ## Installation
 
