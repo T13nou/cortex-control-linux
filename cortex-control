@@ -101,7 +101,10 @@ forget_stale_devices() {
     local pid bus
     for pid in $PIDS; do
         for bus in HID USB; do
-            wine reg delete "HKLM\\System\\CurrentControlSet\\Enum\\$bus\\VID_${VID^^}&PID_${pid^^}&MI_05" /f >>"$LOG" 2>&1 || true
+            # Without the launcher's activation token: it belongs to the Cortex Control window,
+            # otherwise the desktop opens that window in the background.
+            env -u DESKTOP_STARTUP_ID -u XDG_ACTIVATION_TOKEN \
+                wine reg delete "HKLM\\System\\CurrentControlSet\\Enum\\$bus\\VID_${VID^^}&PID_${pid^^}&MI_05" /f >>"$LOG" 2>&1 || true
         done
     done
 }
