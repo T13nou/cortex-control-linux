@@ -21,7 +21,9 @@ not needed.
 Two obstacles, two fixes:
 
 - **USB access**: by default, `/dev/hidrawN` is only accessible to root. The udev rule
-  `udev/70-quad-cortex.rules` grants access to the logged-in user (`uaccess` tag) and nobody else.
+  `udev/70-quad-cortex.rules` grants access to the logged-in user (`uaccess` tag) and nobody else,
+  for the HID channel of Neural DSP devices only (vendor `152a` is shared with other audio brands,
+  so the rule also checks the manufacturer string).
 - **Black window**: Cortex Control is a JUCE 8 application that renders with Direct2D. With Wine's
   own Direct3D 11, the window stays black. With [DXVK](https://github.com/doitsujin/dxvk) installed
   in the prefix, the interface renders correctly. Disabling Wine's `d2d1` does not work: the
@@ -29,7 +31,10 @@ Two obstacles, two fixes:
 
 ## Requirements
 
-- A recent Wine (tested with 11.20) and winetricks
+- **Wine 11** or later (tested with 11.20) and winetricks. With Wine 10.0, Cortex Control does not
+  detect the device: Wine lacks the `cfgmgr32` functions it uses to find HID devices. If you are
+  stuck on Wine 10, use [0xteo/cortex-control-linux](https://github.com/0xteo/cortex-control-linux),
+  which ships a replacement `cfgmgr32.dll` for that case.
 - A Vulkan-capable graphics driver (for DXVK)
 - Optional: `7z` and ImageMagick (`magick`), to extract the application icon
 
@@ -54,7 +59,7 @@ cd cortex-control-linux
    ```sh
    sudo install -m 644 udev/70-quad-cortex.rules /etc/udev/rules.d/
    sudo udevadm control --reload
-   sudo udevadm trigger --subsystem-match=hidraw --subsystem-match=usb
+   sudo udevadm trigger --subsystem-match=hidraw
    ```
 
    Then unplug and replug the Quad Cortex.
@@ -136,6 +141,12 @@ Reports from full-size Quad Cortex owners are especially useful.
 sudo rm /etc/udev/rules.d/70-quad-cortex.rules
 sudo udevadm control --reload
 ```
+
+## See also
+
+[0xteo/cortex-control-linux](https://github.com/0xteo/cortex-control-linux) solves the same
+problem independently, with a more automated installer (Ubuntu), a `cfgmgr32` shim for Wine 10
+and fixes for the setup wizard. Its udev rule inspired the manufacturer match used here.
 
 ## License
 

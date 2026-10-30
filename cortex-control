@@ -3,8 +3,8 @@
 # Usage: cortex-control {doctor|install <installer.exe>|run|stop|dxvk|desktop|uninstall}
 set -euo pipefail
 
-VID=152a
-PIDS="880a 892f"  # Quad Cortex, Quad Cortex mini
+VID=152a  # Thesycon, shared with other audio brands: devices are also matched by name
+MIN_WINE=11  # Wine 10.0 lacks the cfgmgr32 calls Cortex Control uses to find HID devices
 PREFIX="${CORTEX_PREFIX:-${XDG_DATA_HOME:-$HOME/.local/share}/wineprefixes/cortex-control}"
 LOG="${XDG_STATE_HOME:-$HOME/.local/state}/cortex-control.log"
 SELF="$(readlink -f "$0")"
@@ -19,17 +19,28 @@ ok()   { printf '  \e[32mOK\e[0m  %s\n' "$*"; }
 warn() { printf '  \e[33m!!\e[0m  %s\n' "$*"; }
 die()  { printf '\e[31mError:\e[0m %s\n' "$*" >&2; exit 1; }
 
+# Prints "<hidraw name> <product id>" for the first Neural DSP device, nothing if none is plugged in.
+qc_device() {
+    local h id
+    for h in /sys/class/hidraw/hidraw*; do
+        grep -q '^HID_NAME=Neural DSP' "$h/device/uevent" 2>/dev/null || continue
+        id="$(sed -n "s/^HID_ID=0003:0000${VID^^}:0000//Ip" "$h/device/uevent")"
+        [[ -n "$id" ]] || continue
+        echo "$(basename "$h") ${id,,}"
+        return
+    done
+}
+
 # /dev/hidrawN node of the Quad Cortex, empty if it is not plugged in.
 qc_hidraw() {
-    local h pid
-    for h in /sys/class/hidraw/hidraw*; do
-        for pid in $PIDS; do
-            if grep -qi "HID_ID=0003:0000${VID}:0000${pid}" "$h/device/uevent" 2>/dev/null; then
-                echo "/dev/$(basename "$h")"
-                return
-            fi
-        done
-    done
+    local dev
+    dev="$(qc_device)"
+    [[ -n "$dev" ]] && echo "/dev/${dev%% *}"
+    return 0
+}
+
+wine_major() {
+    wine --version 2>/dev/null | sed -n 's/^wine-\([0-9]*\).*/\1/p'
 }
 
 # Cortex Control (JUCE 8) renders with Direct2D; with Wine's d3d11 the window stays black.
@@ -51,7 +62,13 @@ app_exe() {
 cmd_doctor() {
     local bad=0 node
     echo "Checks:"
-    if command -v wine >/dev/null; then ok "Wine $(wine --version)"; else warn "Wine not found: install it with your package manager"; bad=1; fi
+    if ! command -v wine >/dev/null; then
+        warn "Wine not found: install it with your package manager"; bad=1
+    elif (( $(wine_major || echo 0) < MIN_WINE )); then
+        warn "$(wine --version): device detection is known to fail before Wine $MIN_WINE (see README)"; bad=1
+    else
+        ok "Wine $(wine --version)"
+    fi
 
     node="$(qc_hidraw)"
     if [[ -z "$node" ]]; then
@@ -98,14 +115,15 @@ cmd_install() {
 # again without dropping the old entry, and Cortex Control then lists a phantom "Quad Cortex".
 # Removing the entries makes Wine register only the device actually plugged in.
 forget_stale_devices() {
-    local pid bus
-    for pid in $PIDS; do
-        for bus in HID USB; do
-            # Without the launcher's activation token: it belongs to the Cortex Control window,
-            # otherwise the desktop opens that window in the background.
-            env -u DESKTOP_STARTUP_ID -u XDG_ACTIVATION_TOKEN \
-                wine reg delete "HKLM\\System\\CurrentControlSet\\Enum\\$bus\\VID_${VID^^}&PID_${pid^^}&MI_05" /f >>"$LOG" 2>&1 || true
-        done
+    local dev pid bus
+    dev="$(qc_device)"
+    [[ -n "$dev" ]] || return 0
+    pid="${dev##* }"
+    for bus in HID USB; do
+        # Without the launcher's activation token: it belongs to the Cortex Control window,
+        # otherwise the desktop opens that window in the background.
+        env -u DESKTOP_STARTUP_ID -u XDG_ACTIVATION_TOKEN \
+            wine reg delete "HKLM\\System\\CurrentControlSet\\Enum\\$bus\\VID_${VID^^}&PID_${pid^^}&MI_05" /f >>"$LOG" 2>&1 || true
     done
 }
 

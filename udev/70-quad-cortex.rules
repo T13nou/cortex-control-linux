@@ -1,6 +1,7 @@
-# Neural DSP Quad Cortex (USB 152a:880a) and Quad Cortex mini (152a:892f), Thesycon chip
+# Neural DSP Quad Cortex and Quad Cortex mini (and other Neural DSP USB devices)
 # Grants the local session user access to the HID control channel,
 # which Wine (winebus, hidraw backend) forwards to Cortex Control.
+# 152a is Thesycon's vendor ID, shared with other audio brands: also match the
+# manufacturer string. Only hidraw is opened: Cortex Control does not need raw USB.
 # The number must stay below 73: the uaccess tag is applied by 73-seat-late.rules.
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="152a", ATTRS{idProduct}=="880a|892f", TAG+="uaccess"
-SUBSYSTEM=="usb", ATTR{idVendor}=="152a", ATTR{idProduct}=="880a|892f", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="152a", ATTRS{manufacturer}=="Neural DSP", TAG+="uaccess"
