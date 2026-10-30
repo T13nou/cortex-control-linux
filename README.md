@@ -105,8 +105,11 @@ The Wine log is written to `~/.local/state/cortex-control.log`.
 - Only the **Quad Cortex mini** has been tested. The full-size Quad Cortex (`152a:880a`) exposes
   the same HID channel and is covered by the udev rule and the script, but nobody has confirmed it
   works yet: feedback welcome.
-- Not verified yet: firmware updates under Wine. To be safe, update from Windows or macOS: a USB
-  disconnection during the write could leave the device in a bad state.
+- Firmware updates and device reboot from Cortex Control work under Wine (tested once on a
+  Quad Cortex mini). A firmware update remains the riskiest operation: a USB disconnection or a
+  Wine crash during the write could leave the device in a bad state. Use a direct USB port (no
+  hub), close other applications using the device, and keep a Windows or macOS machine at hand
+  as a fallback.
 - Not verified either: signing in to the Neural DSP account and Cortex Cloud sync.
 
 ## Uninstall
