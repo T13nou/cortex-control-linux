@@ -164,6 +164,23 @@ extract_icon() {
     return $rc
 }
 
+# Shortcuts the installer creates through Wine: they match the Cortex Control window too, so the
+# desktop pins them instead of ours, and they launch the app without this script.
+remove_wine_shortcuts() {
+    local data="${XDG_DATA_HOME:-$HOME/.local/share}" desk f removed=0
+    desk="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")"
+    if [[ -d "$data/applications/wine/Programs/Cortex Control" ]]; then
+        rm -rf "$data/applications/wine/Programs/Cortex Control"; removed=1
+    fi
+    for f in "$data/desktop-directories/wine-Programs-Cortex Control.directory" "$desk/Cortex Control.lnk"; do
+        [[ -e "$f" ]] && { rm -f "$f"; removed=1; }
+    done
+    f="$desk/Cortex Control.desktop"
+    if [[ -f "$f" ]] && grep -qi wine "$f"; then rm -f "$f"; removed=1; fi
+    (( removed )) && ok "Removed the shortcuts created by Wine (they conflicted with this one)"
+    return 0
+}
+
 cmd_desktop() {
     local apps="${XDG_DATA_HOME:-$HOME/.local/share}/applications" icon=audio-card
     mkdir -p "$apps"
@@ -172,17 +189,19 @@ cmd_desktop() {
 [Desktop Entry]
 Type=Application
 Name=Cortex Control
-Comment=Neural DSP Quad Cortex (Wine)
+GenericName=Quad Cortex Editor
+Comment=Edit presets and settings on the Neural DSP Quad Cortex (via Wine)
 Exec="$SELF" run
 Icon=$icon
-Categories=Audio;Music;
+Terminal=false
+StartupNotify=true
 StartupWMClass=cortex control.exe
+Categories=AudioVideo;Audio;Music;
+Keywords=Neural;DSP;Quad;Cortex;guitar;preset;editor;
 EOF
-    # The installer's own shortcut also matches the window, so the desktop pins it instead of ours.
-    if [[ -d "$apps/wine/Programs/Cortex Control" ]]; then
-        rm -rf "$apps/wine/Programs/Cortex Control"
-        ok "Removed the shortcut created by Wine (it conflicted with this one)"
-    fi
+    remove_wine_shortcuts
+    command -v update-desktop-database >/dev/null && update-desktop-database "$apps" >/dev/null 2>&1 || true
+    command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache -f -t "${ICON_DIR%/256x256/apps}" >/dev/null 2>&1 || true
     command -v kbuildsycoca6 >/dev/null && kbuildsycoca6 >/dev/null 2>&1 || true
     ok "Menu entry added: $apps/cortex-control.desktop (icon: $icon)"
 }

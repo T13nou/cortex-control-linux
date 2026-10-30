@@ -10,6 +10,9 @@ Cortex Control 4.1.0.
 > Independent project, not affiliated with Neural DSP. Cortex Control is not included: download
 > the Windows installer from the Neural DSP website.
 
+> [!TIP]
+> **Back up your presets** before you start: this is an unofficial setup, provided as is.
+
 ## How it works
 
 The Quad Cortex (USB `152a:880a`) and Quad Cortex mini (`152a:892f`) expose three interfaces: audio (UAC2), MIDI and a
@@ -99,14 +102,32 @@ The Wine log is written to `~/.local/state/cortex-control.log`.
 
 ## Troubleshooting
 
-- **Device not detected**: `cortex-control doctor` must report "HID channel accessible". Close any other application using the Quad Cortex over MIDI. To see what
-  Wine does: `WINEDEBUG=+hid,+hidraw cortex-control run`, then look for `152a` in the log.
+- **Device not detected**: give it a few seconds first, Wine brings USB devices up shortly after it
+  starts. Then check that `cortex-control doctor` reports "HID channel accessible", and close any
+  other application using the Quad Cortex over MIDI. To see what Wine does:
+  `WINEDEBUG=+hid,+hidraw cortex-control run`, then look for `152a` in the log.
+- **`hidraw … Broken pipe` errors in the log**: harmless, the device rejects one optional message
+  and everything else works.
+- **Window partly off-screen**: double-click the title bar to maximize it (or resize it), then
+  close the app; it remembers its size.
+- **Keep Wine's default X11 driver** (XWayland on a Wayland desktop). Wine's Wayland driver is
+  reported to give the window a Windows-style frame and to break resizing.
 - **A phantom "Quad Cortex" with a warning sign** in the device picker: after the device reboots
   (e.g. a firmware update), Wine keeps a stale entry for it. `cortex-control run` clears these
   entries when Cortex Control is not already running; close the app and launch it again.
 - **Black window**: `cortex-control dxvk`, then relaunch.
 - **fish shell**: `~` is not expanded after `=` (`env WINEPREFIX=~/…` fails); use `$HOME`.
 - **Last resort**: a Windows virtual machine (virt-manager) with the Quad Cortex passed through over USB.
+
+## Audio
+
+None of this is needed for audio: the Quad Cortex is a standard USB audio interface, picked up
+directly by PipeWire.
+
+- Switch it to the **Pro Audio** profile (e.g. in `pavucontrol` or your desktop's sound settings)
+  to get plain `AUX` channels instead of a fake surround layout.
+- For a DAW, install `pipewire-jack` (Arch: `pipewire-jack`, Fedora: `pipewire-jack-audio-connection-kit`,
+  Debian/Ubuntu: `pipewire-jack`).
 
 ## Known limitations
 
