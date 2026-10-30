@@ -52,6 +52,31 @@ On CachyOS, `wine-cachyos` works too. On Debian and Ubuntu, a recent Wine is ava
 
 ## Installation
 
+### One line
+
+Plug in the Quad Cortex, then:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/T13nou/cortex-control-linux/main/install.sh | bash
+```
+
+The script asks before each step that changes your system:
+
+1. installs the missing packages (`wine`, `winetricks`, `7zip`, `imagemagick`) with `pacman`, `dnf`
+   or `apt` (sudo), and warns if your Wine is older than 11;
+2. puts the scripts in `~/.local/share/cortex-control-linux` and a `cortex-control` command in
+   `~/.local/bin`;
+3. installs the udev rule (sudo);
+4. downloads the official Cortex Control v4.1.0 installer from Neural DSP's servers and checks its
+   SHA-256 (this project does not host it);
+5. sets everything up under Wine: the Windows setup wizard opens, keep the default options.
+
+Already have the installer? Pass its path:
+`curl -fsSL …/install.sh | bash -s -- ~/Downloads/"Cortex Control v4.1.0.exe"`.
+Running the one-liner again updates the scripts and keeps your existing installation.
+
+### Manual
+
 ```sh
 git clone https://github.com/T13nou/cortex-control-linux.git
 cd cortex-control-linux
@@ -158,10 +183,15 @@ Reports from full-size Quad Cortex owners are especially useful.
 ## Uninstall
 
 ```sh
-./cortex-control uninstall
-sudo rm /etc/udev/rules.d/70-quad-cortex.rules
-sudo udevadm control --reload
+curl -fsSL https://raw.githubusercontent.com/T13nou/cortex-control-linux/main/uninstall.sh | bash
 ```
+
+It removes the Wine prefix (Cortex Control and its settings), the menu entry, shortcuts and icons,
+the scripts, the cached installer and the log, then asks before removing the udev rule (sudo).
+Packages such as Wine are kept.
+
+Manual install: `./cortex-control uninstall`, then
+`sudo rm /etc/udev/rules.d/70-quad-cortex.rules && sudo udevadm control --reload`.
 
 ## See also
 
