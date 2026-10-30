@@ -1,6 +1,6 @@
-# Neural DSP Quad Cortex mini (USB 152a:892f, puce Thesycon)
-# Donne à l'utilisateur de la session locale l'accès au canal HID de contrôle,
-# que Wine (winebus, backend hidraw) transmet à Cortex Control.
-# Le numéro doit rester < 73 : le tag uaccess est appliqué par 73-seat-late.rules.
+# Neural DSP Quad Cortex mini (USB 152a:892f, Thesycon chip)
+# Grants the local session user access to the HID control channel,
+# which Wine (winebus, hidraw backend) forwards to Cortex Control.
+# The number must stay below 73: the uaccess tag is applied by 73-seat-late.rules.
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="152a", ATTRS{idProduct}=="892f", TAG+="uaccess"
 SUBSYSTEM=="usb", ATTR{idVendor}=="152a", ATTR{idProduct}=="892f", TAG+="uaccess"

@@ -76,8 +76,6 @@ cd cortex-control-linux
 
 4. Launch it from the menu, or with `./cortex-control run`.
 
-The script's messages are in French.
-
 ## Commands
 
 | Command                         | Purpose                                                    |
@@ -94,8 +92,7 @@ The Wine log is written to `~/.local/state/cortex-control.log`.
 
 ## Troubleshooting
 
-- **Device not detected**: `cortex-control doctor` must report the HID channel as accessible
-  ("Canal HID accessible"). Close any other application using the Quad Cortex over MIDI. To see what
+- **Device not detected**: `cortex-control doctor` must report "HID channel accessible". Close any other application using the Quad Cortex over MIDI. To see what
   Wine does: `WINEDEBUG=+hid,+hidraw cortex-control run`, then look for `152a` in the log.
 - **Black window**: `cortex-control dxvk`, then relaunch.
 - **fish shell**: `~` is not expanded after `=` (`env WINEPREFIX=~/…` fails); use `$HOME`.
